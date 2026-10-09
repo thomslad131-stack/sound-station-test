@@ -41,27 +41,14 @@
       user-select: none; 
       -webkit-user-select: none; 
       cursor: pointer; 
-      transition: all 0.2s ease;
-    }
-    
-    .btn-ptt.preparing { 
-      background: radial-gradient(circle, #f59f00 0%, #b26a00 100%); 
-      border-color: #ffd43b; 
-      box-shadow: 0 0 35px rgba(245, 159, 0, 0.8); 
-      transform: scale(0.96); 
+      transition: all 0.15s ease;
     }
     
     .btn-ptt.transmitting { 
-      transform: scale(1.03); 
-      background: radial-gradient(circle, #ff6b6b 0%, #c92a2a 100%); 
-      box-shadow: 0 0 40px rgba(255, 107, 107, 0.9); 
+      transform: scale(1.04); 
+      background: radial-gradient(circle, #ff4d4d 0%, #c92a2a 100%); 
+      box-shadow: 0 0 45px rgba(255, 77, 77, 0.95); 
       border-color: #ffa8a8; 
-    }
-
-    .btn-ptt.post-delay {
-      background: radial-gradient(circle, #495057 0%, #212529 100%);
-      border-color: #ced4da;
-      box-shadow: 0 0 25px rgba(206, 212, 218, 0.5);
     }
   </style>
 </head>
@@ -119,8 +106,8 @@
       </div>
     </div>
 
-    <!-- ปุ่มกดเสียงสัญญาณนิ๊งน่องแยก -->
-    <button type="button" class="btn-purple" onclick="triggerManualChime()">🔔 กดส่งเสียงสัญญาณ (นิ๊งน่อง)</button>
+    <!-- ปุ่มกดเสียงสัญญาณนิ๊งน่องแบบห้าง -->
+    <button type="button" class="btn-purple" onclick="triggerManualChime()">🔔 กดส่งเสียงสัญญาณ (นิ๊งน่องแบบห้าง)</button>
 
     <!-- ปุ่มเปิดแผงควบคุมภายนอก CPN -->
     <button type="button" class="btn-amber" onclick="openExternalControl()">🎛️ เปิดแผงควบคุมโซนลำโพง (ON/OFF) ↗</button>
@@ -131,8 +118,6 @@
 
 <script>
   const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbwKUegou4G9HkjAQ33zSWs5fjhpbWbd1OiWy6-mGmldKKWcjqrcaEkiDPm33MQ5g0js/exec";
-  
-  // รหัสสถานีเฉพาะสำหรับห้องทดสอบ (ไม่ซ้ำกับระบบจริง)
   const FIXED_STATION_ID = "makhamkhu-test-station-v2";
   const EXTERNAL_CONTROL_URL = "https://www.cpnsmartsolution.co.th/st/t005/control";
 
@@ -143,14 +128,7 @@
   let audioCtx = null;
   let audioDestNode = null;
   let micGainNode = null;
-
-  let preTimer = null;
-  let postTimer = null;
-  let countdownTimer = null;
   let isPressed = false;
-  let isPreDelaying = false;
-  let isLive = false;
-  let isPostDelaying = false;
 
   window.addEventListener('DOMContentLoaded', () => {
     const ua = navigator.userAgent || navigator.vendor || window.opera;
@@ -181,31 +159,40 @@
     return audioCtx;
   }
 
+  // เสียงสัญญาณเตือน 4 ตัวโน้ตสไตล์ห้างสรรพสินค้า (Mi -> Do -> Re -> Sol)
   function playChimeSound() {
     const ctx = getAudioContext();
-    const t = ctx.currentTime;
+    const now = ctx.currentTime;
 
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.frequency.setValueAtTime(659.25, t);
-    gain1.gain.setValueAtTime(0.4, t);
-    gain1.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    if (audioDestNode) gain1.connect(audioDestNode);
-    osc1.start(t);
-    osc1.stop(t + 0.6);
+    const notes = [
+      { freq: 659.25, time: 0.00 }, // E5
+      { freq: 523.25, time: 0.35 }, // C5
+      { freq: 587.33, time: 0.70 }, // D5
+      { freq: 392.00, time: 1.05 }  // G4
+    ];
 
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.frequency.setValueAtTime(523.25, t + 0.35);
-    gain2.gain.setValueAtTime(0.4, t + 0.35);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    if (audioDestNode) gain2.connect(audioDestNode);
-    osc2.start(t + 0.35);
-    osc2.stop(t + 1.2);
+    notes.forEach(note => {
+      const startTime = now + note.time;
+      const duration = 1.3;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(note.freq, startTime);
+
+      // ตั้งค่าระดับเสียงแบบกระดิ่งใสค่อยๆ จาง
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.35, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (audioDestNode) gain.connect(audioDestNode);
+
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    });
   }
 
   function triggerManualChime() {
@@ -213,13 +200,13 @@
     const st = document.getElementById('tx-status');
     const oldText = st.innerText;
     const oldColor = st.style.color;
-    st.innerText = "🔔 กำลังส่งเสียงสัญญาณนิ๊งน่อง...";
+    st.innerText = "🔔 กำลังส่งเสียงสัญญาณนิ๊งน่องแบบห้าง...";
     st.style.color = "#d0bfff";
-    writeActivityLog("กดส่งเสียงสัญญาณนิ๊งน่อง");
+    writeActivityLog("กดส่งสัญญาณนิ๊งน่องห้าง");
     setTimeout(() => {
       st.innerText = oldText;
       st.style.color = oldColor;
-    }, 1500);
+    }, 2400);
   }
 
   // ================= 1. เครื่องรับ =================
@@ -302,7 +289,7 @@
     }
   }
 
-  // ================= 3. เครื่องส่ง PTT =================
+  // ================= 3. เครื่องส่ง PTT (ไร้หน่วงเวลา) =================
   async function setupMicrophone() {
     const st = document.getElementById('tx-status');
     try {
@@ -345,106 +332,14 @@
     btn.addEventListener('mouseup', onPTTUp);
   }
 
+  // กดปุ๊บ เปิดไมค์สดทันที
   function onPTTDown(e) {
     if (e) e.preventDefault();
     if (isPressed) return;
     isPressed = true;
 
-    if (isPostDelaying) {
-      clearTimeout(postTimer);
-      clearInterval(countdownTimer);
-      isPostDelaying = false;
-      isLive = true;
-      setLiveUI();
-      return;
-    }
+    if (micGainNode) micGainNode.gain.setValueAtTime(1, audioCtx.currentTime);
 
-    isPreDelaying = true;
-    playChimeSound();
-
-    const btn = document.getElementById('ptt-button');
-    const st = document.getElementById('tx-status');
-    const title = document.getElementById('ptt-label-title');
-    const desc = document.getElementById('ptt-label-desc');
-
-    btn.className = "btn-ptt preparing";
-    let count = 5;
-    title.innerText = count + "s";
-    desc.innerText = "กำลังเปิดสัญญาณ...";
-    st.innerText = `⏳ กำลังเปิดสัญญาณ (รอ ${count} วิ)...`;
-    st.style.color = "#ffd43b";
-
-    countdownTimer = setInterval(() => {
-      count--;
-      if (count > 0) {
-        title.innerText = count + "s";
-        st.innerText = `⏳ กำลังเปิดสัญญาณ (รอ ${count} วิ)...`;
-      } else {
-        clearInterval(countdownTimer);
-      }
-    }, 1000);
-
-    preTimer = setTimeout(() => {
-      if (!isPressed) return;
-      isPreDelaying = false;
-      isLive = true;
-
-      if (micGainNode) micGainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-      setLiveUI();
-      writeActivityLog("กดพูด ว. (เริ่มออกอากาศ)");
-    }, 5000);
-  }
-
-  function onPTTUp(e) {
-    if (e) e.preventDefault();
-    if (!isPressed) return;
-    isPressed = false;
-
-    if (isPreDelaying) {
-      clearTimeout(preTimer);
-      clearInterval(countdownTimer);
-      isPreDelaying = false;
-      resetStandbyUI("🟢 ยกเลิกก่อนออกอากาศ (พร้อมใช้งาน)");
-      return;
-    }
-
-    if (!isLive) return;
-
-    isLive = false;
-    isPostDelaying = true;
-
-    const btn = document.getElementById('ptt-button');
-    const st = document.getElementById('tx-status');
-    const title = document.getElementById('ptt-label-title');
-    const desc = document.getElementById('ptt-label-desc');
-
-    btn.className = "btn-ptt post-delay";
-    let postCount = 5;
-    title.innerText = postCount + "s";
-    desc.innerText = "หางเสียงยังส่งอยู่...";
-    st.innerText = `⏳ กำลังปิดสัญญาณ (ส่งต่ออีก ${postCount} วิ)...`;
-    st.style.color = "#ffd43b";
-
-    clearInterval(countdownTimer);
-    countdownTimer = setInterval(() => {
-      postCount--;
-      if (postCount > 0) {
-        title.innerText = postCount + "s";
-        st.innerText = `⏳ กำลังปิดสัญญาณ (ส่งต่ออีก ${postCount} วิ)...`;
-      } else {
-        clearInterval(countdownTimer);
-      }
-    }, 1000);
-
-    postTimer = setTimeout(() => {
-      isPostDelaying = false;
-      if (micGainNode) micGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-      resetStandbyUI("🟢 สแตนด์บาย (ปล่อยคีย์แล้ว)");
-      writeActivityLog("ปล่อยคีย์ ว. (สิ้นสุดออกอากาศ)");
-    }, 5000);
-  }
-
-  function setLiveUI() {
     const btn = document.getElementById('ptt-button');
     const st = document.getElementById('tx-status');
     const title = document.getElementById('ptt-label-title');
@@ -455,9 +350,18 @@
     desc.innerText = "ปล่อยมือเพื่อหยุด";
     st.innerText = "🔴 กำลังออกอากาศผ่านลำโพง...";
     st.style.color = "#ff6b6b";
+
+    writeActivityLog("กดพูด ว. (เริ่มออกอากาศ)");
   }
 
-  function resetStandbyUI(statusMessage) {
+  // ปล่อยปุ๊บ ตัดไมค์ทันที
+  function onPTTUp(e) {
+    if (e) e.preventDefault();
+    if (!isPressed) return;
+    isPressed = false;
+
+    if (micGainNode) micGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+
     const btn = document.getElementById('ptt-button');
     const st = document.getElementById('tx-status');
     const title = document.getElementById('ptt-label-title');
@@ -466,8 +370,10 @@
     btn.className = "btn-ptt";
     title.innerText = "PTT";
     desc.innerText = "กดค้างเพื่อพูด";
-    st.innerText = statusMessage || "🟢 พร้อมใช้งาน (กดปุ่มค้างเพื่อพูด)";
+    st.innerText = "🟢 พร้อมใช้งาน (กดปุ่มค้างเพื่อพูด)";
     st.style.color = "#51cf66";
+
+    writeActivityLog("ปล่อยคีย์ ว. (สิ้นสุดออกอากาศ)");
   }
 
   function writeActivityLog(eventStatus) {
