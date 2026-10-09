@@ -73,7 +73,7 @@
     ไมโครโฟนจะไม่ทำงาน กรุณากดปุ่ม <b>⋮</b> มุมบนขวา แล้วเลือก <b>"เปิดในเบราว์เซอร์ภายนอก"</b> (Chrome หรือ Safari)
   </div>
 
-  <h2>📻 ระบบวิทยุสื่อสารเสียงตามสาย</h2>
+  <h2>📻 ระบบวิทยุสื่อสารเสียงตามสาย (ชุดทดสอบ)</h2>
 
   <!-- 1. เมนูหลัก -->
   <div id="view-menu">
@@ -130,10 +130,10 @@
 </div>
 
 <script>
-  // *** นำ Web App URL ใหม่ที่ได้จาก Google Apps Script มาวางแทนที่ตรงนี้ ***
   const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbwKUegou4G9HkjAQ33zSWs5fjhpbWbd1OiWy6-mGmldKKWcjqrcaEkiDPm33MQ5g0js/exec";
   
-  const FIXED_STATION_ID = "makhamkhu-main-sound-station";
+  // รหัสสถานีเฉพาะสำหรับห้องทดสอบ (ไม่ซ้ำกับระบบจริง)
+  const FIXED_STATION_ID = "makhamkhu-test-station-v2";
   const EXTERNAL_CONTROL_URL = "https://www.cpnsmartsolution.co.th/st/t005/control";
 
   let peerInstance = null;
